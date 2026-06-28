@@ -2,7 +2,6 @@ import random
 import ai2thor
 
 PREFERENCES = {
-
     "Box": {
         "Floor": 1.0,
         "Shelf": 0.8,
@@ -138,7 +137,6 @@ DEFAULT_PREFERENCE = {"DiningTable":1.0,
                       "CoffeeTable":0.8,
                       "Cabinet":0.3}
 
-
 def get_preferred_location(obj, objects):
     obj_type = obj["objectType"]
     preferred_dict = PREFERENCES.get(obj_type, DEFAULT_PREFERENCE)
@@ -146,11 +144,7 @@ def get_preferred_location(obj, objects):
         o["objectType"]
         for o in objects
         if o.get("receptacle", False)
-
-
-    }
-
-
+  }
     sorted_preference=sorted(preferred_dict.items(),
                              key=lambda item:item[1],
                              reverse=True)
