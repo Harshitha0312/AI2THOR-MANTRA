@@ -74,17 +74,6 @@ def find_destination(held_type, objects):
     if not candidates:
         return None
     return min(candidates, key=lambda o:o["distance"])
-    # preferred = get_preferred_location({"objectType": held_type}, objects)
-    # candidates = [
-    #     o for o in objects
-    #     if o["objectType"] == preferred
-    #     and o.get("visible")
-    #     and o.get("receptacle")
-    # ]
-    # if not candidates:
-    #     return None
-    # return min(candidates, key=lambda o: o["distance"])
-
 def _restore_camera(controller, steps_taken):
     reverse = {"LookDown": "LookUp", "LookUp": "LookDown"}
     for action in reversed(steps_taken):
