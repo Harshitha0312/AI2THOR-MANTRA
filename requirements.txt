@@ -1,0 +1,7 @@
+ai2thor==5.0.0
+SpeechRecognition>=3.10.0
+pyttsx3>=2.90
+PyAudio>=0.2.13
+
+# Needed when config.USE_LLM_PARSER = True (falls back to rule-based if it fails)
+openai>=1.0.0
