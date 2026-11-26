@@ -1,81 +1,59 @@
-# MANTRA (Nlp26) — Voice-Controlled ManipulaTHOR Robot
+# MANTRA – Simulation-Based Robot Object Interaction
 
-What changed in Nlp26 is at the top of CHANGELOG.md. Pacing/verification knobs are in config.py
-("Visual pacing" section); the new knobs are `GROCERY_LEAVE_ON_COUNTER`, `MESS_MIN_DISTANCE`,
-`MESS_FLOOR_CHANCE` and `WALK_FALLBACK_GOALS`.
+MANTRA is a robot interaction system developed using AI2-THOR and ManipulaTHOR. It allows users to give instructions through text, understands what needs to be done, and guides the robot through the required actions in a simulated environment.
 
-### Reading the metrics line
+The robot can identify objects, move towards them, pick them up, and place them in the required locations. It can also perform actions such as opening and closing objects.
 
-    [metrics] accuracy 100% | time 17.0s | steps 22 | placed 1 | failed to place 0
+## 1. Project Structure
 
-`accuracy` = % of the work done, `time` = seconds, `steps` = walking steps + turns + manipulation actions,
-`placed` / `failed to place` = objects put where they should go (shown only when a run places something).
-Type `stats` to see the session totals.
-
-Speak (or type) an instruction, and the robot finds the object, walks
-to it, and performs the action in AI2-THOR / ManipulaTHOR.
-
-## 1. Project layout
-
-```
+```text
 MANTRA/
-├── main.py                 # run this in PyCharm
-├── executor.py              # runs a low-level plan against the simulator
-├── config.py                 # all settings in one place
-├── requirements.txt
-├── speech/
-│   ├── speech_to_text.py     # microphone -> text
-│   └── text_to_speech.py     # text -> voice feedback
+├── main.py                    # Main file to run the project
+├── executor.py                # Executes the planned actions
+├── config.py                  # Project settings and configurations
+├── requirements.txt           # Required Python packages
 ├── nlp/
-│   └── command_parser.py     # text -> structured {"steps": [...]}
+│   └── command_parser.py      # Converts text instructions into structured commands
 ├── planner/
-│   ├── action_validator.py   # rejects anything not in config.ALLOWED_ACTIONS
-│   └── task_planner.py       # structured steps -> low level action list
+│   ├── action_validator.py    # Checks whether commands are valid
+│   └── task_planner.py        # Converts commands into robot actions
 ├── robot/
-│   ├── sim_controller.py     # starts the AI2-THOR Controller
-│   ├── navigation.py         # moves the agent next to a target object
-│   ├── manipulation.py       # pickup / put / open / close
-│   └── object_detection.py   # grounds object names to objectIds
+│   ├── sim_controller.py      # Starts the AI2-THOR simulator
+│   ├── navigation.py          # Handles robot movement
+│   ├── manipulation.py        # Handles pickup, placement, opening and closing
+│   └── object_detection.py    # Identifies objects in the scene
 └── environment/
-    └── scene_manager.py      # scene metadata helpers
+    └── scene_manager.py       # Provides object and scene information
 ```
 
-## 2. Install (PyCharm terminal)
+## 2. Installation
+
+Open the project in PyCharm and run the following command in the terminal:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-`PyAudio` (needed for the microphone) sometimes fails to build from
-source:
+Make sure Python and the required dependencies are installed before running the project.
 
-- **Windows:** `pip install pipwin` then `pipwin install pyaudio`
-- **macOS:** `brew install portaudio` then `pip install pyaudio`
-- **Linux:** `sudo apt install portaudio19-dev` then `pip install pyaudio`
+## 3. Running the Project
 
-If you don't want to deal with a microphone at all, set
-`USE_VOICE = False` in `config.py` — the program will simply ask you
-to type each command instead, and everything else works the same way.
+Open `main.py` in PyCharm and run it.
 
-## 3. Run
+On the first launch, AI2-THOR may download its Unity build. An internet connection and a supported display environment are required for the initial setup.
 
-Open `main.py` in PyCharm and run it. On first launch AI2-THOR will
-download its Unity build (this only happens once and needs internet
-access + a display).
+After successful initialization, the terminal should display something similar to:
 
-You should see:
-
-```
+```text
 Starting MANTRA...
 AI2-THOR ready in scene 'FloorPlan1'.
 Objects currently visible: [...]
-Robot: MANTRA is ready. Tell me what to do.
-Listening... (speak now)
+Robot: MANTRA is ready. Enter a command.
 ```
 
-Try commands such as:
+You can enter instructions such as:
 
-```
+```text
 Pick up the apple
 Pick up the apple and put it on the table
 Put the apple in the fridge
@@ -84,56 +62,89 @@ Find the mug
 Go to the sink
 ```
 
-Say (or type) `exit`, `quit`, or `stop` to end the program.
+Enter `exit`, `quit`, or `stop` to close the program.
 
-## 4. How a command flows through the code
+## 4. How the System Works
 
+MANTRA follows a sequence of steps to understand and execute a user instruction.
+
+For example, when the user enters:
+
+**"Put the apple in the fridge"**
+
+The command passes through the following stages:
+
+1. **Command Processing:** The command parser reads the instruction and identifies the required action, object, and destination.
+
+2. **Action Validation:** The action validator checks whether the command is supported by the system.
+
+3. **Task Planning:** The task planner breaks the instruction into smaller actions.
+
+4. **Navigation and Object Identification:** The system identifies the apple and fridge using scene information and moves the robot towards them.
+
+5. **Object Manipulation:** The robot picks up the apple, opens the fridge, places the apple inside, and closes the fridge.
+
+The command is converted into a sequence similar to:
+
+```python
+[
+    ("find", "apple"),
+    ("go_to", "apple"),
+    ("pickup", "apple"),
+    ("find", "fridge"),
+    ("go_to", "fridge"),
+    ("open", "fridge"),
+    ("put", "apple", "fridge"),
+    ("close", "fridge")
+]
 ```
-"Put the apple in the fridge"
-        │
-        ▼  speech_to_text.listen()
-"put the apple in the fridge"
-        │
-        ▼  nlp/command_parser.parse_command()
-{"steps": [{"action": "place", "object": "apple", "target": "fridge"}]}
-        │
-        ▼  planner/action_validator.validate_command()
-        │  (raises InvalidCommandError if malformed)
-        ▼  planner/task_planner.build_plan()
-[("find","apple"), ("go_to","apple"), ("pickup","apple"),
- ("find","fridge"), ("go_to","fridge"), ("open","fridge"),
- ("put","apple","fridge"), ("close","fridge")]
-        │
-        ▼  executor.execute_plan()
-        │  grounds each name to a real objectId (environment/scene_manager.py)
-        │  and calls robot/navigation.py + robot/manipulation.py
-        ▼
-Robot: "Found apple. Moved to apple. Picked up apple. ... Task complete."
+
+Once the actions are completed, the system provides feedback about the result.
+
+## 5. Performance Metrics
+
+MANTRA records performance information to help evaluate how the robot performs each task.
+
+Example:
+
+```text
+[metrics] accuracy 100% | time 17.0s | steps 22 | placed 1 | failed to place 0
 ```
 
-## 5. Extending it
+The metrics represent:
 
-- **New verbs:** add an entry to `VERB_MAP` in `nlp/command_parser.py`
-  and a matching branch in `planner/task_planner.py`.
-- **Smarter language understanding:** set `USE_LLM_PARSER = True` in
-  `config.py`, `pip install anthropic`, and set the `ANTHROPIC_API_KEY`
-  environment variable. `parse_with_llm()` in `nlp/command_parser.py`
-  will then handle more complex/ambiguous sentences, with the
-  rule-based parser as an automatic fallback if the API call fails.
-- **Multi-object tasks** (e.g. "put all the groceries away"): extend
-  `task_planner.build_plan()` to loop over every matching object
-  returned by `environment/scene_manager.get_all_objects()`.
+- **Accuracy:** Percentage of the task completed successfully.
+- **Time:** Total time taken to complete the task, in seconds.
+- **Steps:** Total number of walking, turning, and manipulation actions.
+- **Placed:** Number of objects successfully placed.
+- **Failed to place:** Number of objects that could not be placed successfully.
 
-## 6. Notes
+Enter `stats` to view the session totals.
 
-- All manipulation/navigation actions use AI2-THOR ground-truth object
-  metadata for grounding (`environment/scene_manager.py`), which is the
-  standard approach for manipulation/planning-focused ManipulaTHOR
-  projects (as opposed to pixel-based perception research).
-- Every simulator call checks `lastActionSuccess` and raises a clear
-  Python exception on failure, so a missing/unreachable object results
-  in a spoken message ("I cannot find a banana.") instead of a crash.
-- Action names (`PickupObject`, `PutObject`, `OpenObject`,
-  `CloseObject`, `GetInteractablePositions`, `Teleport`) match the
-  AI2-THOR 5.0.0 API. If you use a different AI2-THOR version, check
-  the changelog for any renamed actions.
+## 6. Customization and Further Development
+
+The system is designed in separate modules, making it easier to modify and extend individual features.
+
+- **Adding New Commands:** New command patterns can be added to `VERB_MAP` in `nlp/command_parser.py`, along with the corresponding logic in `planner/task_planner.py`.
+
+- **Improving Language Understanding:** The system can use an LLM-based parser by enabling `USE_LLM_PARSER = True` in `config.py`. This requires installing the Anthropic package and configuring an API key. The rule-based parser is available as a fallback.
+
+- **Handling Multiple Objects:** The task planner can be extended to identify and process multiple objects in a single instruction.
+
+- **Adjusting Simulation Settings:** Navigation, object placement, and simulation behaviour can be configured through `config.py`.
+
+## 7. Technical Notes
+
+- The system uses AI2-THOR scene metadata to identify objects and their properties. This provides information such as object IDs, positions, and interaction states.
+
+- Navigation and manipulation are handled through separate modules, keeping the implementation organised and easier to maintain.
+
+- Simulator actions are checked using `lastActionSuccess`. If an action fails, the system reports the error instead of continuing as if it had succeeded.
+
+- The project uses AI2-THOR 5.0.0, with actions such as `PickupObject`, `PutObject`, `OpenObject`, `CloseObject`, `GetInteractablePositions`, and `Teleport`.
+
+- Using a different AI2-THOR version may require changes to the supported simulator actions.
+
+---
+
+MANTRA brings together natural language processing, task planning, navigation, and object manipulation in a simulated robotic environment. The project focuses on making robot interactions more organised and reliable while providing a foundation for further development in robotic task execution.
